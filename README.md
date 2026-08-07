@@ -73,10 +73,9 @@ ML04_admission_univ/
 │   └── Admission_Prediction_IEEE_Report.pdf    # Final project report (PDF)
 │
 ├── slide/
-│   └── summary.png                        # Project summary image
+│   └── summary.png                        # Project summary image (embedded above and in the app's Summary)
 │
-├── config.toml                            # Streamlit theme config (place under .streamlit/)
 ├── requirements.txt
-├── streamlit_app.py                       # Streamlit prediction application (four tabs)
+├── streamlit_app.py                       # Streamlit prediction application (four tabs, reads results/ only)
 └── README.md                              # Project documentation
 ```

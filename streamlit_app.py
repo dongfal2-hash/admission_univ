@@ -5,13 +5,20 @@ UCLA Graduate Admission Prediction — 4-tab Streamlit app (unified dark
 theme, same format as the Real Estate / Loan Eligibility / Mall
 Customer Segmentation apps)
 
-Principle: read only what already exists in results/ (pkl/csv/png).
-           No retraining, no regenerating plots — cache the loads,
-           compute only lightweight metrics on the fly (accuracy on
-           the saved test predictions, groupby means). Business/data
-           logic (business question text, data overview, feature-row
-           building) is imported from stage1.py / stage2.py rather
-           than re-implemented here.
+Principle: read only what already exists in results/ and slide/
+           (pkl/csv/png). No retraining, no regenerating plots, and no
+           rebuilding of the summary — cache the loads, compute only
+           lightweight metrics on the fly (accuracy on the saved test
+           predictions, a base-rate mean). Business/data logic (business
+           question text, data overview, feature-row building) is
+           imported from stage1.py / stage2.py rather than
+           re-implemented here.
+
+Layout on disk (see README.md): this file sits at the project root while
+the stage modules live in python/, so python/ is prepended to sys.path
+before importing them — this is what lets `streamlit run streamlit_app.py`
+work from the project root (and on Streamlit Cloud, which always runs
+from the repo root).
 
 Tab order is the pipeline stages in REVERSE (Business Intelligence first, Dataset last),
 so the accent colors are also reversed from the stage order (stage1 business needs=blue,
@@ -31,33 +38,47 @@ Tab 3  EDA (purple)                    : which factors — data & feature engine
                                          results (target distribution / correlation
                                          heatmap / feature distributions)
 Tab 4  Dataset (blue)                   : which dataset — rows/columns, origin, raw
-                                         overview, plus the same 4-step pipeline
-                                         summary used in the other apps
+                                         overview, plus the pre-rendered project
+                                         summary image (slide/summary.png)
 
-Theme: black background / white text. Colors and dark theme are also set
-       app-wide in config.toml.
+Theme: black background / white text, set by the constants below. An optional
+       .streamlit/config.toml can pin the same dark theme app-wide.
 """
 
 import os
 import pickle
+import sys
 
 import pandas as pd
-import matplotlib.pyplot as plt
 import streamlit as st
 from sklearn.metrics import accuracy_score
 
-from stage1 import business_overview, data_overview, TARGET_THRESHOLD
-from stage2 import build_feature_row
-
 # ---------------------------------------------------------------------------
-# Paths
+# Paths — mirror the repository layout documented in README.md
+#
+#   ML04_admission_univ/
+#   ├── data/Admission.csv
+#   ├── python/stage0..4.py          <- imported below, hence the sys.path insert
+#   ├── results/{*.pkl, csv/, txt/, visual/}
+#   ├── slide/summary.png            <- pre-rendered summary shown in Tab 4
+#   └── streamlit_app.py             <- this file
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PYTHON_DIR = os.path.join(BASE_DIR, "python")
 DATA_PATH = os.path.join(BASE_DIR, "data", "Admission.csv")
 RESULT_DIR = os.path.join(BASE_DIR, "results")
 CSV_DIR = os.path.join(RESULT_DIR, "csv")
 VISUAL_DIR = os.path.join(RESULT_DIR, "visual")
-SLIDE_DIR = os.path.join(RESULT_DIR, "slide")
+SLIDE_DIR = os.path.join(BASE_DIR, "slide")
+SUMMARY_PATH = os.path.join(SLIDE_DIR, "summary.png")
+
+# The stage modules are in python/, not next to this file — make them importable
+# regardless of the working directory the app is launched from.
+if PYTHON_DIR not in sys.path:
+    sys.path.insert(0, PYTHON_DIR)
+
+from stage1 import business_overview, data_overview, TARGET_THRESHOLD  # noqa: E402
+from stage2 import build_feature_row                                   # noqa: E402
 
 MODEL_NAMES = ["MLP_relu", "MLP_tanh", "MLP_deep_8_4"]
 
@@ -71,9 +92,6 @@ COLOR_PURPLE = "#C9A6E8"
 COLOR_GREEN = "#A8E6A3"
 COLOR_YELLOW = "#FFF09E"
 
-STEP_COLORS = {1: COLOR_BLUE, 2: COLOR_PURPLE, 3: COLOR_GREEN, 4: COLOR_YELLOW}
-_NUMBER_LABEL = {1: "1\ufe0f\u20e3", 2: "2\ufe0f\u20e3", 3: "3\ufe0f\u20e3", 4: "4\ufe0f\u20e3"}
-
 BG_COLOR = "#000000"
 TEXT_COLOR = "#FFFFFF"
 MUTED_TEXT_COLOR = "#B3B3B3"
@@ -83,15 +101,6 @@ _SECTION_HEADER_TEMPLATE = """
 <div style="border-left:4px solid {color}; padding:2px 0 2px 14px; margin-bottom:16px;">
   <div style="font-size:24px; font-weight:bold; color:{text}; font-family:{font};">{title}</div>
   {subtitle_html}
-</div>
-"""
-
-_CARD_TEMPLATE = """
-<div style="background:{bg}; color:{text}; border:2px solid {color};
-            border-radius:8px; padding:16px; height:100%; font-family:{font};">
-  <div style="font-size:26px; color:{color}; font-weight:bold;">{number}</div>
-  <div style="font-weight:bold; font-size:18px; margin:6px 0 10px 0; color:{text};">{title}</div>
-  <ul style="margin:0; padding-left:18px; font-size:14px; line-height:1.5; color:{text};">{bullets}</ul>
 </div>
 """
 
@@ -107,17 +116,16 @@ def render_section_header(color: str, title: str, subtitle: str = None):
     ), unsafe_allow_html=True)
 
 
-def _bullets_html(items: list) -> str:
-    return "".join(f"<li>{i}</li>" for i in items)
-
-
-def _render_step_card(step: int, title: str, bullets: list):
-    """4-step pipeline summary card, identical style to the other apps' Summary tab."""
-    st.markdown(_CARD_TEMPLATE.format(
-        bg=BG_COLOR, text=TEXT_COLOR, font=FONT_FAMILY,
-        color=STEP_COLORS[step], number=_NUMBER_LABEL[step],
-        title=title, bullets=_bullets_html(bullets),
-    ), unsafe_allow_html=True)
+# ---------------------------------------------------------------------------
+# Shared image helper — every saved figure goes through here so a missing or
+# not-yet-generated PNG shows a clear message instead of crashing the tab.
+# ---------------------------------------------------------------------------
+def show_saved_image(path: str, caption: str = None, **kwargs):
+    if os.path.exists(path):
+        st.image(path, caption=caption, **kwargs)
+    else:
+        st.warning(f"Missing figure: {os.path.relpath(path, BASE_DIR)} "
+                   "— run the analysis pipeline in python/ to generate it.")
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +134,7 @@ def _render_step_card(step: int, title: str, bullets: list):
 @st.cache_data
 def load_raw_data() -> pd.DataFrame:
     df = pd.read_csv(DATA_PATH)
-    df.columns = [c.strip().lstrip("\ufeff") for c in df.columns]
+    df.columns = [c.strip().lstrip("﻿") for c in df.columns]
     return df
 
 
@@ -227,6 +235,9 @@ def render_business_intelligence_tab():
     proba = float(model.predict_proba(feature_row)[0][1])
     label = "Likely admitted" if pred == 1 else "Unlikely"
 
+    cleaned_df = load_cleaned_data()
+    base_rate = cleaned_df["Admit_Chance"].mean()
+
     col_pred, col_gauge = st.columns([1, 2])
     with col_pred:
         st.metric(f"Prediction ({best_name})", label, f"P(admit) = {proba:.1%}")
@@ -234,20 +245,17 @@ def render_business_intelligence_tab():
         # Dynamic expectation: this applicant's predicted probability vs the
         # historical base rate — the classification analogue of the
         # segment-vs-overall comparison in the clustering app.
-        cleaned_df = load_cleaned_data()
-        base_rate = cleaned_df["Admit_Chance"].mean()
-        delta = proba - base_rate
         st.metric(
             "Vs. historical base rate",
             f"{base_rate:.1%} likely-admitted historically",
-            f"{delta:+.1%} for this applicant",
+            f"{proba - base_rate:+.1%} for this applicant",
         )
 
     st.info(
         f"The deployed model ({best_name}, test accuracy "
         f"{metrics_df.iloc[0]['test_accuracy']:.3f}) estimates this applicant's admission "
         f"likelihood at {proba:.1%}, vs. a {base_rate:.1%} historical base rate "
-        f"(Admit_Chance \u2265 {TARGET_THRESHOLD}). This is a model estimate from one "
+        f"(Admit_Chance ≥ {TARGET_THRESHOLD}). This is a model estimate from one "
         f"historical snapshot — not an admissions decision."
     )
 
@@ -285,15 +293,15 @@ def render_model_selection_tab():
 
     col1, col2 = st.columns(2)
     with col1:
-        st.image(os.path.join(VISUAL_DIR, "accuracy_comparison.png"),
-                 caption="Test accuracy by architecture — best highlighted")
-        st.image(os.path.join(VISUAL_DIR, "train_vs_test_accuracy.png"),
-                 caption="Train vs test accuracy — the overfitting-gap view")
+        show_saved_image(os.path.join(VISUAL_DIR, "accuracy_comparison.png"),
+                         caption="Test accuracy by architecture — best highlighted")
+        show_saved_image(os.path.join(VISUAL_DIR, "train_vs_test_accuracy.png"),
+                         caption="Train vs test accuracy — the overfitting-gap view")
     with col2:
-        st.image(os.path.join(VISUAL_DIR, "loss_curves.png"),
-                 caption="Training loss per iteration — how each architecture converged")
-        st.image(os.path.join(VISUAL_DIR, "confusion_matrices.png"),
-                 caption="Confusion matrices on the held-out test set")
+        show_saved_image(os.path.join(VISUAL_DIR, "loss_curves.png"),
+                         caption="Training loss per iteration — how each architecture converged")
+        show_saved_image(os.path.join(VISUAL_DIR, "confusion_matrices.png"),
+                         caption="Confusion matrices on the held-out test set")
 
 
 # ---------------------------------------------------------------------------
@@ -304,18 +312,18 @@ def render_eda_tab():
 
     col1, col2 = st.columns(2)
     with col1:
-        st.image(os.path.join(VISUAL_DIR, "target_distribution.png"),
-                 caption=f"Binarized target — 1 if Admit_Chance \u2265 {TARGET_THRESHOLD}")
+        show_saved_image(os.path.join(VISUAL_DIR, "target_distribution.png"),
+                         caption=f"Binarized target — 1 if Admit_Chance ≥ {TARGET_THRESHOLD}")
     with col2:
-        st.image(os.path.join(VISUAL_DIR, "EDA_heatmap.png"),
-                 caption="Feature correlation incl. the target — which factors track admission")
+        show_saved_image(os.path.join(VISUAL_DIR, "EDA_heatmap.png"),
+                         caption="Feature correlation incl. the target — which factors track admission")
 
-    st.image(os.path.join(VISUAL_DIR, "EDA_feature_distributions.png"),
-             caption="Input feature distributions (GRE / TOEFL / SOP / LOR / CGPA)")
+    show_saved_image(os.path.join(VISUAL_DIR, "EDA_feature_distributions.png"),
+                     caption="Input feature distributions (GRE / TOEFL / SOP / LOR / CGPA)")
     st.caption(
         "MLPs are gradient-trained, so features were scaled to [0, 1] with MinMaxScaler "
         "(fit on the training split only — no test leakage) before fitting; otherwise "
-        "GRE_Score (260\u2013340) would dominate SOP/LOR (1\u20135) purely because of its numeric "
+        "GRE_Score (260–340) would dominate SOP/LOR (1–5) purely because of its numeric "
         "range. University_Rating and Research are numerically coded but semantically "
         "categorical, so they are one-hot encoded rather than treated as continuous."
     )
@@ -330,9 +338,6 @@ def render_dataset_tab():
     raw_df = load_raw_data()
     cleaned_df = load_cleaned_data()
     encoded_df = load_encoded_data()
-    metrics_df = load_model_metrics()
-    best = metrics_df.iloc[0]
-    best_name = best["model"]
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Raw rows", f"{raw_df.shape[0]:,}")
@@ -342,8 +347,8 @@ def render_dataset_tab():
     st.markdown(
         f"<div style='color:{TEXT_COLOR}; font-family:{FONT_FAMILY};'>"
         "Each row is one graduate applicant (Serial_No dropped after use), with GRE and "
-        "TOEFL scores, SOP/LOR strength (1\u20135), undergraduate CGPA (out of 10), university "
-        "rating (1\u20135), and research experience (0/1). The target Admit_Chance is an "
+        "TOEFL scores, SOP/LOR strength (1–5), undergraduate CGPA (out of 10), university "
+        "rating (1–5), and research experience (0/1). The target Admit_Chance is an "
         f"estimated admission probability, binarized at {TARGET_THRESHOLD}: applicants at or "
         "above the threshold are labeled likely admitted (1), the rest unlikely (0)."
         "</div><br>",
@@ -373,20 +378,13 @@ def render_dataset_tab():
         )
 
     # -----------------------------------------------------------------
-    # 4-step pipeline summary — a single designed slide image
-    # (results/slide/summary.png) instead of generated HTML cards.
+    # Summary — the pre-rendered slide/summary.png, the same image the
+    # README embeds. Nothing is composed in code here, so the app,
+    # README and report all tell the identical story.
     # -----------------------------------------------------------------
     st.write("")
     render_section_header(COLOR_YELLOW, "Summary")
-
-    summary_img_path = os.path.join(SLIDE_DIR, "summary.png")
-    if os.path.exists(summary_img_path):
-        st.image(summary_img_path, use_container_width=True)
-    else:
-        st.warning(
-            f"Summary slide not found at results/slide/summary.png. "
-            f"Add the image there to display it here."
-        )
+    show_saved_image(SUMMARY_PATH, use_container_width=True)
 
     st.caption("Tools: Python | pandas | scikit-learn | matplotlib | seaborn | Streamlit")
 
