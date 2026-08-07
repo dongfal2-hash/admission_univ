@@ -13,7 +13,7 @@ Can a graduate applicant's admission outcome be predicted from their academic an
 Admissions committees commonly rely on a fixed GPA or test-score cutoff, or read every application with the same depth of scrutiny regardless of how clearly it falls above or below the bar. Such coarse approaches ignore how test scores, GPA, and qualitative factors such as SOP/LOR strength and research experience interact, and risk inconsistent screening decisions under time pressure.
 
 ## Business Intelligence: streamlit site
-[< Streamlit 앱 URL>](https://)
+[< Streamlit  URL>](https://admissionuniv-3vpe6yvgzgczpmxc2ptqpl.streamlit.app)
 
 ## Conclusion
 
@@ -26,7 +26,7 @@ On 500 graduate applicants, a deeper two-layer MLPClassifier (8, 4 units) outper
 [4] K. Hornik, M. Stinchcombe, and H. White, “Multilayer feedforward networks are universal approximators,” Neural Networks, vol. 2, no. 5, pp. 359–366, 1989.
 [5] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,” in Proc. 3rd Int. Conf. Learning Representations (ICLR), 2015.
 [6] F. Pedregosa et al., “Scikit-learn: Machine learning in Python,” J. Mach. Learn. Res., vol. 12, pp. 2825–2830, 2011.
-[7] Streamlit Inc., “Streamlit documentation.” [Online]. Available: https://docs.streamlit.io
+[7] Streamlit Inc., “Streamlit documentation.” [Online]. Available: https://admissionuniv-3vpe6yvgzgczpmxc2ptqpl.streamlit.app
 
 ## Project Structure
 
