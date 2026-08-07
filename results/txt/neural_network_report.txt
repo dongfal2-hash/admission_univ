@@ -1,0 +1,241 @@
+
+======================================================================
+UCLA ADMISSION PREDICTION (NEURAL NETWORK)
+======================================================================
+
+======================================================================
+STAGE 1 — BUSINESS UNDERSTANDING
+======================================================================
+Business question: Can a graduate applicant's admission outcome be predicted from their academic profile (GRE, TOEFL, CGPA, SOP/LOR strength, university rating, research experience), and which neural-network architecture classifies 'likely admitted' (Admit_Chance >= 0.8) applicants most reliably?
+
+======================================================================
+STAGE 1 — DATA COLLECTION: RAW OVERVIEW
+======================================================================
+Data shape: (500, 9)
+
+Column info:
+                     dtype  null_count  null_pct(%)
+Serial_No            int64           0          0.0
+GRE_Score            int64           0          0.0
+TOEFL_Score          int64           0          0.0
+University_Rating    int64           0          0.0
+SOP                float64           0          0.0
+LOR                float64           0          0.0
+CGPA               float64           0          0.0
+Research             int64           0          0.0
+Admit_Chance       float64           0          0.0
+
+Column head:
+   Serial_No  GRE_Score  TOEFL_Score  University_Rating  SOP  LOR  CGPA  Research  Admit_Chance
+0          1        337          118                  4  4.5  4.5  9.65         1          0.92
+1          2        324          107                  4  4.0  4.5  8.87         1          0.76
+2          3        316          104                  3  3.0  3.5  8.00         1          0.72
+
+Column tail:
+     Serial_No  GRE_Score  TOEFL_Score  University_Rating  SOP  LOR  CGPA  Research  Admit_Chance
+497        498        330          120                  5  4.5  5.0  9.56         1          0.93
+498        499        312          103                  4  4.0  5.0  8.43         0          0.73
+499        500        327          113                  4  4.5  4.5  9.04         0          0.84
+
+======================================================================
+STAGE 1 — MISSING VALUE IMPUTATION
+======================================================================
+No missing values found — imputation skipped.
+
+======================================================================
+STAGE 1 — CLEAN & PREPARE
+======================================================================
+Raw Admit_Chance distribution (before binarization):
+count    500.00000
+mean       0.72174
+std        0.14114
+min        0.34000
+25%        0.63000
+50%        0.72000
+75%        0.82000
+max        0.97000
+
+Target binarized: Admit_Chance >= 0.8 -> 1, else 0
+Binarized target counts:
+Admit_Chance
+0    345
+1    155
+
+Dropped columns: ['Serial_No']
+Cast to object dtype for one-hot encoding in Stage 2: ['University_Rating', 'Research']
+
+======================================================================
+STAGE 2 — EDA: TARGET DISTRIBUTION
+======================================================================
+Target counts:
+Admit_Chance
+0    345
+1    155
+Positive-class share: 31.0%
+Saved: /Users/dh/dhwonlab/ML/ML_individual project/4_Network/results/visual/target_distribution.png
+
+======================================================================
+STAGE 2 — EDA: FEATURE DISTRIBUTIONS
+======================================================================
+GRE_Score: mean=316.47, min=290, max=340
+TOEFL_Score: mean=107.19, min=92, max=120
+SOP: mean=3.37, min=1.0, max=5.0
+LOR: mean=3.48, min=1.0, max=5.0
+CGPA: mean=8.58, min=6.8, max=9.92
+Saved: /Users/dh/dhwonlab/ML/ML_individual project/4_Network/results/visual/EDA_feature_distributions.png
+
+======================================================================
+STAGE 2 — EDA: CORRELATION HEATMAP
+======================================================================
+Correlation matrix:
+              GRE_Score  TOEFL_Score   SOP   LOR  CGPA  Admit_Chance
+GRE_Score          1.00         0.83  0.61  0.52  0.83          0.68
+TOEFL_Score        0.83         1.00  0.64  0.54  0.81          0.70
+SOP                0.61         0.64  1.00  0.66  0.71          0.58
+LOR                0.52         0.54  0.66  1.00  0.64          0.50
+CGPA               0.83         0.81  0.71  0.64  1.00          0.74
+Admit_Chance       0.68         0.70  0.58  0.50  0.74          1.00
+
+Correlation with target (sorted):
+CGPA           0.742
+TOEFL_Score    0.699
+GRE_Score      0.684
+SOP            0.581
+LOR            0.500
+Saved: /Users/dh/dhwonlab/ML/ML_individual project/4_Network/results/visual/EDA_heatmap.png
+
+======================================================================
+STAGE 2 — DATA ENGINEERING: ONE-HOT ENCODING
+======================================================================
+One-hot encoded columns: ['University_Rating', 'Research']
+Shape before: (500, 8) -> after: (500, 13)
+
+======================================================================
+STAGE 2 — TRAIN/TEST SPLIT
+======================================================================
+Split: 80/20, stratified on target, random_state=123
+Train shape: (400, 12), Test shape: (100, 12)
+Train target balance:
+Admit_Chance
+0    0.69
+1    0.31
+Test target balance:
+Admit_Chance
+0    0.69
+1    0.31
+
+======================================================================
+STAGE 2 — FEATURE SCALING
+======================================================================
+Scaler: MinMaxScaler (fit on train only — no test leakage)
+
+======================================================================
+STAGE 3 — HYPERPARAMETERS USED
+======================================================================
+batch_size=50, random_state=123; architectures: relu(3,), tanh(3,), deep(8,4)
+
+======================================================================
+STAGE 3 — MODEL 1: MLPClassifier (activation=relu, default)
+======================================================================
+Train Accuracy: 0.9225
+Test Accuracy:  0.9000
+Confusion Matrix:
+[[63  6]
+ [ 4 27]]
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.94      0.91      0.93        69
+           1       0.82      0.87      0.84        31
+
+    accuracy                           0.90       100
+   macro avg       0.88      0.89      0.89       100
+weighted avg       0.90      0.90      0.90       100
+
+
+======================================================================
+STAGE 3 — MODEL 2: MLPClassifier (activation=tanh)
+======================================================================
+Train Accuracy: 0.9400
+Test Accuracy:  0.9000
+Confusion Matrix:
+[[63  6]
+ [ 4 27]]
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.94      0.91      0.93        69
+           1       0.82      0.87      0.84        31
+
+    accuracy                           0.90       100
+   macro avg       0.88      0.89      0.89       100
+weighted avg       0.90      0.90      0.90       100
+
+
+======================================================================
+STAGE 3 — MODEL 3: MLPClassifier (deeper, hidden_layer_sizes=(8,4))
+======================================================================
+Train Accuracy: 0.9350
+Test Accuracy:  0.9200
+Confusion Matrix:
+[[65  4]
+ [ 4 27]]
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.94      0.94      0.94        69
+           1       0.87      0.87      0.87        31
+
+    accuracy                           0.92       100
+   macro avg       0.91      0.91      0.91       100
+weighted avg       0.92      0.92      0.92       100
+
+
+======================================================================
+STAGE 3 — STABILITY CHECK (5-fold stratified CV on the training split)
+======================================================================
+       model  cv_mean_accuracy  cv_std
+    MLP_relu            0.9125  0.0274
+    MLP_tanh            0.9150  0.0215
+MLP_deep_8_4            0.9225  0.0215
+
+======================================================================
+STAGE 3 — MODEL COMPARISON SUMMARY
+======================================================================
+       model  train_accuracy  test_accuracy
+MLP_deep_8_4          0.9350           0.92
+    MLP_relu          0.9225           0.90
+    MLP_tanh          0.9400           0.90
+
+Best model (highest test accuracy): MLP_deep_8_4
+
+======================================================================
+STAGE 3 — LOSS CURVE GRAPH
+======================================================================
+Saved: /Users/dh/dhwonlab/ML/ML_individual project/4_Network/results/visual/loss_curves.png
+
+======================================================================
+STAGE 3 — MODEL COMPARISON GRAPH
+======================================================================
+Saved: /Users/dh/dhwonlab/ML/ML_individual project/4_Network/results/visual/accuracy_comparison.png
+Best model highlighted: MLP_deep_8_4
+
+======================================================================
+STAGE 4 — CONFUSION MATRICES
+======================================================================
+Saved: /Users/dh/dhwonlab/ML/ML_individual project/4_Network/results/visual/confusion_matrices.png
+
+======================================================================
+STAGE 4 — TRAIN VS TEST ACCURACY GRAPH
+======================================================================
+Saved: /Users/dh/dhwonlab/ML/ML_individual project/4_Network/results/visual/train_vs_test_accuracy.png
+
+======================================================================
+STAGE 4 — MODEL DEPLOYMENT / INSIGHT
+======================================================================
+[Model to deploy] MLP_deep_8_4 (Test Accuracy 0.920, Train Accuracy 0.935, train-test gap +0.015).
+[Top factors correlated with admission]
+  CGPA: r = 0.742
+  TOEFL_Score: r = 0.699
+  GRE_Score: r = 0.684
+[Action] Use the deployed model as a screening aid: surface each applicant's predicted admission likelihood next to their strongest profile factors (CGPA / GRE / TOEFL), route borderline predictions to human review, and advise applicants that raising the top-correlated factors moves their predicted outcome most.
