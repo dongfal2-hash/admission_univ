@@ -31,8 +31,10 @@ import stage4
 # Paths
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(BASE_DIR, "data", "Admission.csv")
-RESULT_DIR = os.path.join(BASE_DIR, "results")
+PROJECT_DIR = os.path.dirname(BASE_DIR)
+
+DATA_PATH = os.path.join(PROJECT_DIR, "data", "Admission.csv")
+RESULT_DIR = os.path.join(PROJECT_DIR, "results")
 
 # ---------------------------------------------------------------------------
 # INPUT CONSTANTS — change these and the whole pipeline follows

@@ -1,4 +1,4 @@
-# Python cache
+ppt/Admission_Presentation_Fun.pptx# Python cache
 __pycache__/
 *.py[cod]
 *.pkl
@@ -29,3 +29,8 @@ env/
 
 # Logs
 *.log
+
+
+ppt/Admission_Prediction_Fun2.mp4
+
+
